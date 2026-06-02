@@ -102,6 +102,303 @@
 
     // Start your code here
     // You may move this JS to another file if you wish
+    const demoUser = {
+      name: 'Vinh Tong',
+      role: 'Programmer',
+      skills: ['math', 'logic', 'algorithms'],
+      active: true
+    };
+
+    const demoNames = [
+      { FirstName: 'Vinh', LastName: 'Tong' },
+      { FirstName: 'Barry', LastName: 'Allen' },
+      { FirstName: 'Oliver', LastName: 'Queen' }
+    ];
+
+    let groupIsOpen = false;
+    const timerName = 'demo-timer';
+
+    class CalculatorError extends Error {
+      constructor(message, category, details = {}, options = {}) {
+        super(message, options);
+        this.name = 'CalculatorError';
+        this.category = category;
+        this.details = details;
+      }
+    }
+
+    function buttonByText(text) {
+      return errorBtns.find(button => button.textContent.trim() === text);
+    }
+
+    function getRequiredElement(selector) {
+      const element = document.querySelector(selector);
+
+      if (element === null) {
+        throw new CalculatorError(
+          `Required DOM element "${selector}" was not found.`,
+          'missing-element',
+          { selector }
+        );
+      }
+
+      return element;
+    }
+
+    function getNumberFromInput(selector, label) {
+      const input = getRequiredElement(selector);
+      const value = input.value.trim();
+
+      if (value === '') {
+        throw new CalculatorError(
+          `${label}: This field is required.`,
+          'input-validation',
+          { fieldName: label, value }
+        );
+      }
+
+      const number = Number(value);
+
+      if (Number.isNaN(number)) {
+        throw new CalculatorError(
+          `${label}: Please enter a valid number.`,
+          'input-validation',
+          { fieldName: label, value }
+        );
+      }
+
+      return number;
+    }
+
+    function calculateResult(firstNum, secondNum, operator) {
+      switch (operator) {
+        case '+':
+          return firstNum + secondNum;
+        case '-':
+          return firstNum - secondNum;
+        case '*':
+          return firstNum * secondNum;
+        case '/':
+          if (secondNum === 0) {
+            throw new CalculatorError(
+              'Cannot divide by zero.',
+              'calculation',
+              { operation: `${firstNum} / ${secondNum}` }
+            );
+          }
+          return firstNum / secondNum;
+        default:
+          throw new CalculatorError(
+          `Unsupported operator: ${operator}`,
+          'calculation',
+          { operator }
+        );
+      }
+    }
+
+    function showErrorToUser(error) {
+      const output = document.querySelector('output');
+
+      if (output === null) {
+        console.warn('The output element is missing, so the error cannot be shown on the page.');
+        return;
+      }
+
+      if (!(error instanceof CalculatorError)) {
+        output.textContent = 'Unexpected error. Check the console for details.';
+        return;
+      }
+
+      switch (error.category) {
+        case 'input-validation':
+          output.textContent = `Input Error: ${error.message}`;
+          break;
+        case 'calculation':
+          output.textContent = `Math Error: ${error.message}`;
+          break;
+        case 'missing-element':
+          output.textContent = `Page Error: ${error.message}`;
+          break;
+        default:
+          output.textContent = `Calculator Error: ${error.message}`;
+      }
+    }
+
+    function logCustomErrorDetails(error) {
+      console.error(`${error.name}: ${error.message}`, error);
+      console.table({
+        errorType: error.name,
+        isCalculatorError: error instanceof CalculatorError,
+        category: error.category,
+        message: error.message,
+        details: JSON.stringify(error.details),
+        cause: error.cause ? error.cause.message : 'none'
+      });
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+
+      console.group('Calculator custom Error demo');
+
+      try {
+        const output = getRequiredElement('output');
+        const firstNum = getNumberFromInput('#first-num', 'First number');
+        const secondNum = getNumberFromInput('#second-num', 'Second number');
+        const operator = getRequiredElement('#operator').value;
+        const result = calculateResult(firstNum, secondNum, operator);
+
+        output.textContent = result;
+        console.log('Calculation succeeded:', {
+          firstNum,
+          operator,
+          secondNum,
+          result
+        });
+      } catch (error) {
+        if (error instanceof CalculatorError) {
+          logCustomErrorDetails(error);
+          showErrorToUser(error);
+        } else {
+          console.error('Unexpected non-calculator error:', error);
+          showErrorToUser(error);
+        }
+      } finally {
+        console.groupEnd();
+      }
+    });
+
+    window.addEventListener('error', event => {
+      console.group('Global custom Error handler');
+      console.error('Global error caught by window error handler:', {
+        message: event.message,
+        file: event.filename,
+        line: event.lineno,
+        column: event.colno
+      });
+
+      if (event.error instanceof CalculatorError) {
+        console.log('The global error is one of our custom calculator errors.');
+        logCustomErrorDetails(event.error);
+      }
+      console.groupEnd();
+    });
+
+    buttonByText('Console Log').addEventListener('click', () => {
+      console.log('Console Log Demo:', demoUser);
+    });
+
+    buttonByText('Console Error').addEventListener('click', () => {
+      const originalProblem = new Error('The pretend server returned a 500 status.');
+      const customError = new CalculatorError(
+        'Console Error Demo: A calculation service failed.',
+        'calculation',
+        { operation: 'remote calculation' },
+        { cause: originalProblem }
+      );
+
+      console.error(customError.name, customError.message, customError);
+      console.log('Original cause:', customError.cause);
+    });
+
+    buttonByText('Console Count').addEventListener('click', () => {
+      console.count('Console Count Demo button clicks');
+    });
+
+    buttonByText('Console Warn').addEventListener('click', () => {
+      console.warn('Console Warn Demo: Check this person in the names table.', demoNames[2]);
+    });
+
+    buttonByText('Console Assert').addEventListener('click', () => {
+      console.assert(demoNames.length >= 4, 'Console Assert Demo: The names table has fewer than 4 people.', {
+        numberOfNames: demoNames.length,
+        demoNames
+      });
+    });
+
+    buttonByText('Console Clear').addEventListener('click', () => {
+      console.clear();
+      console.log('Console was cleared. This message confirms the clear button worked.');
+    });
+
+    buttonByText('Console Dir').addEventListener('click', () => {
+      console.dir(document.querySelector('main'));
+    });
+
+    buttonByText('Console dirxml').addEventListener('click', () => {
+      console.dirxml(document.querySelector('#error-btns'));
+    });
+
+    buttonByText('Console Group Start').addEventListener('click', () => {
+      if (groupIsOpen) {
+        console.warn('A console group is already open. Click "Console Group End" before starting another one.');
+        return;
+      }
+
+      console.group('Console Group Demo');
+      console.log('User data:', demoUser);
+      console.table(demoNames);
+      console.groupCollapsed('Nested collapsed group');
+      console.log('This message is inside a nested group.');
+      console.groupEnd();
+      groupIsOpen = true;
+    });
+
+    buttonByText('Console Group End').addEventListener('click', () => {
+      if (!groupIsOpen) {
+        console.warn('No console group is currently open. Click "Console Group Start" first.');
+        return;
+      }
+
+      console.log('Ending Console Group Demo');
+      console.groupEnd();
+      groupIsOpen = false;
+    });
+
+    buttonByText('Console Table').addEventListener('click', () => {
+      console.table(demoNames);
+    });
+
+    buttonByText('Start Timer').addEventListener('click', () => {
+      console.time(timerName);
+      console.log(`Started timer named "${timerName}".`);
+    });
+
+    buttonByText('End Timer').addEventListener('click', () => {
+      console.timeEnd(timerName);
+    });
+
+    buttonByText('Console Trace').addEventListener('click', () => {
+      function firstFunction() {
+        secondFunction();
+      }
+
+      function secondFunction() {
+        thirdFunction();
+      }
+
+      function thirdFunction() {
+        console.trace('Console Trace Demo: Here is the call stack.');
+      }
+
+      firstFunction();
+    });
+
+    buttonByText('Trigger a Global Error').addEventListener('click', () => {
+      const output = document.querySelector('output');
+
+      if (output !== null) {
+        output.remove();
+        console.warn('The output element was removed. The next calculation will trigger the custom CalculatorError path.');
+      }
+
+      throw new CalculatorError(
+        'Required DOM element "output" was not found.',
+        'missing-element',
+        { selector: 'output' },
+        { cause: new Error('The output element was removed by the global error demo button.') }
+      );
+    });
   </script>
 </body>
 
